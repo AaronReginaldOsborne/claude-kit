@@ -1,0 +1,709 @@
+{
+  "$comment": "Single source of truth for the kit. SETUP.md reads this file. Placeholders in <ANGLE_BRACKETS> are filled in at install time and never saved back here. Each item says how its command was checked on 2026-09-27 (its verified or note field). Unless a field says otherwise, checks ran on Windows 11 (Git Bash and PowerShell 5.1) with Claude Code 2.1.257 and Node 22.14; nothing has been run on macOS yet, and Linux only through WSL. Anything not checked is listed under open.",
+  "kit": {
+    "name": "claude-kit",
+    "version": "1.0.0",
+    "description": "Aaron's Claude Code setup, packaged for a friend: rules, one command, his own skills as a plugin, public plugins and skills, GSD, and optional MCP servers.",
+    "repo": "https://github.com/AaronReginaldOsborne/claude-kit",
+    "repoStatus": "public (Aaron's decision, 2026-09-27; published 2026-09-27)",
+    "access": "Anyone can clone it over HTTPS ('git clone https://github.com/AaronReginaldOsborne/claude-kit'): no GitHub account, invite or sign-in is needed, for the first clone or for later git pulls. If the clone or a pull fails, the friend's Claude stops and shows the error in plain words.",
+    "cloneTo": "~/claude-kit",
+    "keepFolder": "Keep ~/claude-kit where it is after setup. The aaron-kit plugin loads from this folder (a local directory marketplace); moving or deleting it breaks aaron-kit ('Status: failed to load, Error: Marketplace aaron-kit failed to load: cache-miss', verified in a sandbox by moving the folder). Recovery is under marketplaces[aaron-kit].recovery."
+  },
+  "scopeRule": {
+    "summary": "Everything installs at USER (global) scope so it works in every project. Nothing is ever installed at project or local scope.",
+    "userClaudeDir": "~/.claude, or the folder in the CLAUDE_CONFIG_DIR environment variable when that is set (the skills CLI's -g and GSD's --global both follow CLAUDE_CONFIG_DIR, verified in a sandbox home)",
+    "workingDirectory": "Run from the home folder, never inside a project, and pass the scope flag on every command even where it is the default. Right after the prerequisite check passes, and before any backup or install, snapshot the home folder and, when the session's working folder is not the home folder, that folder too, with fileHelper snapshot (Step 1b); Step 5 checks them with fileHelper compare.",
+    "noScopeOption": "Two commands the kit runs have no scope option at all: 'claude plugin marketplace update [<name>]' (it refreshes marketplaces that are already declared; its --help lists only -h) and 'agent-browser install' (it writes only to ~/.agent-browser/). Every other install, update and uninstall command carries its scope flag, and the npm prefix change carries --location user.",
+    "flags": {
+      "rulesAndCommand": "files are written into the user Claude folder (CLAUDE.md, commands/), never a project CLAUDE.md or project .claude/",
+      "pluginMarketplaces": "claude plugin marketplace add <source> --scope user",
+      "plugins": "claude plugin install <plugin>@<marketplace> --scope user",
+      "skills": "npx -y skills@1.7.0 add <source> -g -a claude-code -s <names...> --copy -y   (-g = global, --copy = real folders in the user Claude folder's skills/, no symlinks to ~/.agents/skills)",
+      "gsd": "npx -y get-shit-done-cc@1.42.3 --claude --global",
+      "mcp": "claude mcp add --scope user ...   (the CLI default is local scope, so --scope user is required)",
+      "cliTools": "npm install -g ... (npm's global folder, not the project)"
+    },
+    "expectedUserLevelWrites": [
+      "<USER_CLAUDE_DIR>/CLAUDE.md, commands/, skills/, agents/, hooks/, get-shit-done/, plugins/, settings.json, gsd-install-state.json",
+      "<USER_CLAUDE_DIR>/claude-kit-record.json (what the kit installed, for re-runs and Undo; no keys)",
+      "<USER_CLAUDE_DIR>/claude-kit-snapshot.json (Step 1b to Step 5 only, deleted after the check: watched paths with times and sizes, settings key names with a short hash of each value and the marketplace names under extraKnownMarketplaces, never a value)",
+      "<USER_CLAUDE_DIR>/*.bak-<stamp> (the backups from Step 3)",
+      "<USER_CLAUDE_DIR>/mcp/nano-banana-pro/ (Windows only: the launcher and its node_modules)",
+      "~/.claude.json (user-scope MCP servers and their keys; inside CLAUDE_CONFIG_DIR when that is set)",
+      "~/.agents/.skill-lock.json (the skills CLI's record of what it installed; a lock file only, no skill folders)",
+      "the gsd-sdk command: on Windows in npm's global folder (npm prefix -g); on macOS and Linux in the first writable folder inside the home folder that is on PATH, else ~/.local/bin (read in the installer's bin/install.js, trySelfLinkGsdSdk). The installer skips the link when a gsd-sdk is already on PATH (seen in a Windows sandbox).",
+      "npm's global folder: agent-browser, when chosen",
+      "only after the human's yes to cli:agent-browser.ifEacces (recorded as npm-prefix): ~/.npmrc (npm config set prefix ... --location user writes npm's user config file), the new global folder ~/.npm-global/, and one PATH line in ~/.zshrc (macOS) or ~/.bashrc (Linux)",
+      "only after the human's yes to gsd.sdkPath (recorded as gsd-sdk-path): one PATH line in ~/.zshrc or ~/.bashrc on macOS/Linux, or the gsd-sdk folder added to the user PATH on Windows",
+      "~/.agent-browser/ (the copy of Chrome that 'agent-browser install' downloads)",
+      "~/.claude-mem/ (claude-mem's session database, vector store, logs and settings), and uv, which claude-mem installs itself when it is missing (its README)",
+      "caches: npm's cache (every npx download), uv's cache (uvx meta-ads-mcp), ~/.bun/install/cache (plugin installs, when Bun is installed)"
+    ],
+    "mustNotAppearInWorkingDirectory": [
+      ".mcp.json",
+      "skills-lock.json",
+      ".agents/skills/ (any path under it; the skills CLI's ~/.agents/.skill-lock.json is expected and not watched)",
+      "CLAUDE.md (in the folder itself, as opposed to inside the user Claude folder)",
+      ".claude/settings.local.json: any change except one only under its permissions key. Claude Code saves the human's 'Yes, and don't ask again' approvals there, which is expected.",
+      ".claude/ unless it is the user Claude folder: any new, removed or changed path under it (see sessionFolderClaudeDir). That means the session folder's .claude/ when the session folder is not the home folder, and the home folder's own .claude/ too when CLAUDE_CONFIG_DIR points somewhere else.",
+      "a local-scope MCP server (stored in ~/.claude.json under projects.<folder>.mcpServers; 'claude mcp get <name>' then shows 'Scope: Local config'). Checked with the filtered claude mcp get in Step 5, never by opening ~/.claude.json, which holds keys."
+    ],
+    "sessionFolderClaudeDir": {
+      "applies": "to every watched folder whose .claude/ is not USER_CLAUDE_DIR: the session folder when it is not the home folder, and the home folder itself when USER_CLAUDE_DIR does not resolve to HOME_DIR/.claude (CLAUDE_CONFIG_DIR set to another folder), since ~/.claude is then an ordinary folder that a project-scope write could reach. When USER_CLAUDE_DIR is HOME_DIR/.claude, that folder is the user Claude folder: its settings.json is the user file and is expected to change (plugins, marketplaces and GSD write it), so only the fixed list above applies there. fileHelper snapshot takes USER_CLAUDE_DIR as its last argument to decide this.",
+      "why": "Project-scope writes land in <folder>/.claude/: a project-scope plugin install writes enabledPlugins into <folder>/.claude/settings.json (local scope: settings.local.json) and a project-scope marketplace add writes extraKnownMarketplaces there (Claude Code docs, 'Install and manage plugins > Choose an install scope'; 'claude plugin install --help' and 'claude plugin marketplace add --help' list user, project and local); a GSD run without --global writes <folder>/.claude/ (commands/, agents/, hooks/, get-shit-done/, settings.json; the installer's --local means the current directory, read in bin/install.js); a misplaced command lands in <folder>/.claude/commands/.",
+      "snapshot": "fileHelper snapshot records every path under <folder>/.claude/ (not following links) with its modified time and size, plus the top-level key names of <folder>/.claude/settings.json and settings.local.json, each with a short hash of its value so a changed key can be named, and the key names under their extraKnownMarketplaces (marketplace names). Values are never stored or printed.",
+      "flag": "fileHelper compare flags every new, removed or changed file under <folder>/.claude/, names the settings keys added, removed or changed, and lists under marketplacesAdded the extraKnownMarketplaces keys that are new since the snapshot. Not flagged (listed under ignored): a change to settings.local.json in which no key other than permissions changed; a folder whose only change is its own modified time; and a new or removed folder with contents, whose files are compared one by one (a new or removed folder is flagged when it is empty or something inside it is flagged). So a new <folder>/.claude/ holding only a permissions-only settings.local.json is clean."
+    }
+  },
+  "prerequisites": [
+    {
+      "id": "claude",
+      "check": ["claude --version"],
+      "need": "Claude Code CLI 2.1 or newer (verified with 2.1.257). If a command in SETUP.md is not recognised, run: claude update",
+      "installHelp": {
+        "all": "https://code.claude.com/docs/en/setup"
+      },
+      "requiredFor": "everything"
+    },
+    {
+      "id": "git",
+      "check": ["git --version"],
+      "need": "any recent git",
+      "installHelp": {
+        "macos": "xcode-select --install (Apple's Command Line Tools include git), or https://git-scm.com/downloads",
+        "linux": "the distribution's git package, see https://git-scm.com/downloads",
+        "windows": "https://git-scm.com/downloads (Git for Windows, which also brings Git Bash)"
+      },
+      "requiredFor": "cloning the kit and every plugin marketplace. The paste prompt clones before SETUP runs, so a missing git is caught by the paste prompt itself."
+    },
+    {
+      "id": "node",
+      "check": ["node --version", "npx --version"],
+      "need": "Node.js 22.20 or newer is the minimum (skills CLI 1.7.0 declares >=22.20; GSD >=22; context-mode >=22.5). Node 24 LTS is recommended: agent-browser 0.27.1 and later declare node >=24, so on Node 22 npm quietly installs agent-browser 0.27.0 from May 2026 (npm registry engines per version). Node 22.14 ran everything else in the checks with an EBADENGINE warning.",
+      "installHelp": {
+        "macos": "Homebrew: brew install node (https://brew.sh), or nvm (https://github.com/nvm-sh/nvm). The nodejs.org .pkg also works, but its global npm folder is owned by root, so npm install -g fails with EACCES (npm's docs; not reproduced here).",
+        "linux": "nvm or fnm, see https://nodejs.org/en/download. Distribution packages usually leave npm's global folder owned by root, so npm install -g fails with EACCES.",
+        "windows": "https://nodejs.org (the LTS installer)"
+      },
+      "requiredFor": "skills, GSD, context-mode, playwright/shadcn/nano-banana-pro MCP, agent-browser, and the kit's file helper (tools/kit-files.mjs)"
+    },
+    {
+      "id": "bun",
+      "check": ["bun --version"],
+      "need": "Bun 1.0 or newer",
+      "installHelp": {
+        "all": "https://bun.sh"
+      },
+      "requiredFor": "claude-mem only (its runner exits with 'Bun not found' without it)",
+      "onlyIf": "claude-mem is chosen"
+    },
+    {
+      "id": "uv",
+      "check": ["uvx --version"],
+      "need": "uv (provides uvx)",
+      "installHelp": {
+        "all": "https://docs.astral.sh/uv/getting-started/installation/"
+      },
+      "requiredFor": "meta-ads MCP server only",
+      "onlyIf": "meta-ads is chosen"
+    },
+    {
+      "id": "python",
+      "check": ["python3 --version", "python --version   (only if python3 is not found)"],
+      "need": "Python 3",
+      "installHelp": {
+        "all": "https://www.python.org/downloads/"
+      },
+      "requiredFor": "optional: ui-ux-pro-max's search scripts and some document-skills tasks; not needed to install",
+      "onlyIf": "never blocks setup; mention it if missing and ui-ux-pro-max or document-skills is chosen"
+    }
+  ],
+  "prerequisiteStop": "Install it, then quit Claude Code, close this terminal window, open a new one, go to your home folder, start claude and paste the prompt again. (A tool installed while Claude Code is running is often not found until a new terminal is opened, especially on Windows.)",
+  "groups": [
+    {
+      "id": "core",
+      "name": "Core",
+      "recommended": true,
+      "plainWords": "Aaron's three skills (new client website intake, production readiness audit, SEO), Superpowers (planning, debugging and test-first habits for coding), Skill Creator (make your own skills), and skills for Word, Excel, PowerPoint and PDF files.",
+      "items": [
+        "file:rules",
+        "file:antivibe-docs",
+        "plugin:aaron-kit",
+        "plugin:superpowers",
+        "plugin:skill-creator",
+        "plugin:document-skills"
+      ],
+      "askSeparately": [
+        {
+          "items": ["file:rules", "file:antivibe-docs"],
+          "question": "House rules for coding: whenever Claude writes code in a project, it adds and keeps up a CLAUDE.md file and a docs/ folder (plan, scope, decisions) in that project, and the /antivibe-docs command sets them up on request. This applies in every code project on this computer, including projects other people own. Skip this if you mostly work in someone else's code. Add the house rules?"
+        }
+      ]
+    },
+    {
+      "id": "developer",
+      "name": "Developer extras",
+      "recommended": false,
+      "plainWords": "For building software: GSD (a step-by-step project workflow with 33 helper agents, 67 commands, hooks and a status line; as installed, its command list adds about 12,000 tokens to the start of every Claude session in every project), context-mode (keeps big tool output out of Claude's working memory), UI/UX Pro Max and Stitch design taste (design help), the Vercel plugin, a Postgres best-practices skill, agent-browser (browser automation; installs its own command-line tool and downloads a copy of Chrome), and find-skills. claude-mem is asked about on its own.",
+      "items": [
+        "gsd",
+        "plugin:context-mode",
+        "plugin:claude-mem",
+        "plugin:ui-ux-pro-max",
+        "plugin:vercel",
+        "skills:supabase",
+        "skills:agent-browser",
+        "cli:agent-browser",
+        "skills:find-skills",
+        "skills:stitch-design-taste"
+      ],
+      "askSeparately": [
+        {
+          "items": ["plugin:claude-mem"],
+          "question": "claude-mem (memory across sessions): it records every Claude Code session in every project into a local database in ~/.claude-mem on this computer, runs a small background service on this computer (localhost; port 37777 on Windows, a port in the 37700s on macOS/Linux), needs Bun, installs uv if it is missing, and runs extra Claude sessions in the background to summarise your work, which count toward your Claude usage. Install claude-mem?"
+        }
+      ]
+    },
+    {
+      "id": "marketing",
+      "name": "Marketing and content",
+      "recommended": false,
+      "plainWords": "AI search and SEO audits, planning for AI video and voice-over (Veo, Kling, Luma, HeyGen, Synthesia, captions and clipping, talking-head videos), and the Higgsfield image and video skills. The skills themselves are free; the services they write for (Higgsfield, HeyGen, Synthesia, Kling, Luma, Veo) are paid and need your own accounts.",
+      "items": [
+        "skills:marketing-seo",
+        "skills:social-video",
+        "skills:higgsfield"
+      ]
+    },
+    {
+      "id": "tools",
+      "name": "Extra connections (some need your own key)",
+      "recommended": false,
+      "plainWords": "Optional connections (MCP servers) that let Claude use outside services, picked one by one. context7 (up-to-date library docs), playwright (controls a browser) and shadcn (UI components) need no key. stitch (Google's UI design tool), 21st (UI components), meta-ads (your Facebook and Instagram ads) and nano-banana-pro (Gemini image generation) need your own API key: a password-like code you get from that service's website. Some of these can cost money: Gemini image generation and 21st.dev can charge your own account, and meta-ads can change real ad budgets.",
+      "pickEach": true,
+      "items": [
+        "mcp:context7",
+        "mcp:playwright",
+        "mcp:shadcn",
+        "mcp:stitch",
+        "mcp:21st",
+        "mcp:meta-ads",
+        "mcp:nano-banana-pro"
+      ]
+    }
+  ],
+  "fileHelper": {
+    "path": "<KIT_DIR>/tools/kit-files.mjs",
+    "why": "Edits the human's CLAUDE.md, snapshots the working folders and reads JSON key names the same way in every shell and OS (no GNU-only find or stat flags), without passing file contents or settings values through the chat and without rewriting anything outside the kit's own block. Standard-library Node only.",
+    "commands": {
+      "rulesStatus": "node \"<KIT_DIR>/tools/kit-files.mjs\" rules-status \"<USER_CLAUDE_DIR>/CLAUDE.md\" \"<KIT_DIR>/files/CLAUDE.md\"",
+      "rulesAdd": "node \"<KIT_DIR>/tools/kit-files.mjs\" rules-add \"<USER_CLAUDE_DIR>/CLAUDE.md\" \"<KIT_DIR>/files/CLAUDE.md\"",
+      "rulesUpdate": "node \"<KIT_DIR>/tools/kit-files.mjs\" rules-update \"<USER_CLAUDE_DIR>/CLAUDE.md\" \"<KIT_DIR>/files/CLAUDE.md\"",
+      "rulesRemove": "node \"<KIT_DIR>/tools/kit-files.mjs\" rules-remove \"<USER_CLAUDE_DIR>/CLAUDE.md\"",
+      "same": "node \"<KIT_DIR>/tools/kit-files.mjs\" same \"<A>\" \"<B>\"   -> {\"result\":\"same\"|\"different\"|\"missing\"}",
+      "snapshot": "node \"<KIT_DIR>/tools/kit-files.mjs\" snapshot \"<USER_CLAUDE_DIR>/claude-kit-snapshot.json\" \"<HOME_DIR>\" \"<SESSION_DIR>\" \"<USER_CLAUDE_DIR>\"   -> {\"done\":\"snapshot\",\"userClaudeDir\":...,\"folders\":[{folder,isHome,watchTree,paths}]}. Watches the home folder and, when SESSION_DIR is a different folder, that folder, each by the fixed list plus, when its .claude/ is not USER_CLAUDE_DIR (watchTree true), every path under its .claude/ (scopeRule.sessionFolderClaudeDir). Pass SESSION_DIR even when it is the home folder, and always pass USER_CLAUDE_DIR (without it, HOME_DIR/.claude is taken as the user Claude folder). Refuses (exit 2) to write the snapshot inside a watched path (the fixed list, or a watched .claude/).",
+      "compare": "node \"<KIT_DIR>/tools/kit-files.mjs\" compare \"<USER_CLAUDE_DIR>/claude-kit-snapshot.json\"   -> {\"result\":\"clean\"|\"flagged\",\"folders\":[{folder,isHome,watchTree,flagged:[{path,change:added|removed|changed,keysAdded?,keysRemoved?,keysChanged?,marketplacesAdded?}],ignored:[{...,why}],flaggedCount,moreFlagged?}]}. marketplacesAdded (on a settings file) = the extraKnownMarketplaces keys new since the snapshot. At most 50 flagged paths per folder are listed; flaggedCount has the total.",
+      "keys": "node \"<KIT_DIR>/tools/kit-files.mjs\" keys \"<FILE.json>\" [<TOP_LEVEL_KEY>]   -> {\"result\":\"keys\",\"keys\":[...],\"present\":true|false} or {\"result\":\"missing\"|\"not-json\"|\"not-an-object\"}. Prints key names only (the file's top-level keys, or the keys of the object under TOP_LEVEL_KEY), never values: use it instead of opening settings files, which can hold keys in env."
+    },
+    "output": "One line of JSON. Exit 0 = done; exit 2 = refused, nothing written.",
+    "verified": "Windows, Git Bash, Node 22.14: missing, LF, CRLF with BOM, no final newline, unmarked, outdated, broken and UTF-16 files. Bytes outside the block stayed identical, a second add was refused, update kept text after the block, remove restored the original bytes. snapshot/compare/keys (added 2026-09-27, tests in tools/kit-files.test.mjs): a new file under a project folder's .claude/commands/ and get-shit-done/ and a new enabledPlugins key in its settings.json were flagged, with key names but no values in the output or the snapshot; a settings.local.json change only under permissions was ignored and a new extraKnownMarketplaces key there was flagged; in the home folder, changes under .claude/ and ~/.agents/.skill-lock.json were not flagged while a new .mcp.json, .agents/skills/<name>/ and CLAUDE.md were; a snapshot path inside a watched path was refused, and a session folder above the home folder worked. Added in review round 3 (same file): a session folder with no .claude/ at snapshot time that then gets only a permissions-only settings.local.json compares clean (an empty new folder there is flagged); with a user Claude folder argument other than <home>/.claude, the home folder's .claude/ is watched whole while the user Claude folder is not; marketplacesAdded names only marketplaces new since the snapshot. Also run once from Windows PowerShell 5.1 (snapshot, compare, keys; before round 3). Not run on macOS or Linux."
+  },
+  "files": [
+    {
+      "id": "file:rules",
+      "source": "files/CLAUDE.md",
+      "target": "<USER_CLAUDE_DIR>/CLAUDE.md",
+      "mode": "kit-block",
+      "presentMarker": "## Anti-vibe-coding docs framework",
+      "blockMarkers": {
+        "start": "<!-- claude-kit rules: start (added by claude-kit; to change it, re-run the kit) -->",
+        "end": "<!-- claude-kit rules: end -->"
+      },
+      "behaviour": "Run fileHelper rulesStatus, then act on its state. missing or absent: back up (Step 3), then rulesAdd (creates the file, or appends a blank line and the rules between the block markers). current: already there, skip. outdated (the kit's rules changed since they were added): tell the human in one sentence, ask, and only on yes run rulesUpdate. unmarked (the file already contains the text presentMarker, but not inside the kit's markers): already there, skip; Undo will not touch it. broken (a marker without its partner): do not edit; tell the human and mark the item failed. unsupported-encoding (not UTF-8, for example UTF-16 saved by Windows PowerShell): do not edit or convert; tell the human and mark it skipped. Never overwrite.",
+      "uninstall": "fileHelper rulesRemove (only a kit block is removed; state unmarked is left alone)"
+    },
+    {
+      "id": "file:antivibe-docs",
+      "source": "files/commands/antivibe-docs.md",
+      "target": "<USER_CLAUDE_DIR>/commands/antivibe-docs.md",
+      "mode": "copy-ask-if-different",
+      "behaviour": "Compare with fileHelper same. missing: create commands/ if needed and copy with the shell (cp, or Copy-Item in PowerShell). same: skip. different: tell the human in one sentence and ask; only on yes back it up as antivibe-docs.md.bak-<stamp> and replace.",
+      "uninstall": "Delete the target only when fileHelper same says it matches the kit's copy; if it differs, ask first."
+    }
+  ],
+  "marketplaces": [
+    {
+      "name": "aaron-kit",
+      "add": "claude plugin marketplace add \"<KIT_DIR_ABSOLUTE>\" --scope user",
+      "uninstall": "claude plugin marketplace remove aaron-kit --scope user",
+      "note": "This repo is the marketplace (.claude-plugin/marketplace.json), added from the local clone by absolute path, so it needs no GitHub access of its own. The plugin keeps loading from that folder: see kit.keepFolder. Adding it by its HTTPS git URL instead would remove that dependency. The earlier objection, that every marketplace update would then clone with the friend's git credentials, applied only while the repo was private; not tried, OPEN for Aaron.",
+      "recovery": [
+        "claude plugin marketplace remove aaron-kit --scope user",
+        "claude plugin marketplace add \"<NEW_KIT_DIR_ABSOLUTE>\" --scope user",
+        "claude plugin install aaron-kit@aaron-kit --scope user"
+      ],
+      "verified": "claude plugin validate . passed; added, installed, uninstalled and removed in a sandbox CLAUDE_CONFIG_DIR. Moving the folder gave 'failed to load: cache-miss'; the three recovery commands brought it back to enabled."
+    },
+    {
+      "name": "claude-plugins-official",
+      "add": "claude plugin marketplace add https://github.com/anthropics/claude-plugins-official.git --scope user",
+      "uninstall": "claude plugin marketplace remove claude-plugins-official --scope user",
+      "note": "May already be configured. If a marketplace with this name is listed, do not add it again: update it.",
+      "verified": "added in isolation; re-adding the same URL exits 0 ('already on disk')"
+    },
+    {
+      "name": "context-mode",
+      "add": "claude plugin marketplace add https://github.com/mksglu/context-mode.git --scope user",
+      "uninstall": "claude plugin marketplace remove context-mode --scope user",
+      "verified": "added in isolation"
+    },
+    {
+      "name": "thedotmack",
+      "add": "claude plugin marketplace add https://github.com/thedotmack/claude-mem.git --scope user",
+      "uninstall": "claude plugin marketplace remove thedotmack --scope user",
+      "verified": "added in isolation"
+    },
+    {
+      "name": "anthropic-agent-skills",
+      "add": "claude plugin marketplace add https://github.com/anthropics/skills.git --scope user",
+      "uninstall": "claude plugin marketplace remove anthropic-agent-skills --scope user",
+      "verified": "added in isolation"
+    },
+    {
+      "name": "ui-ux-pro-max-skill",
+      "add": "claude plugin marketplace add https://github.com/nextlevelbuilder/ui-ux-pro-max-skill.git --scope user",
+      "uninstall": "claude plugin marketplace remove ui-ux-pro-max-skill --scope user",
+      "verified": "added in isolation"
+    }
+  ],
+  "marketplaceNotes": [
+    "Use the HTTPS .git URLs above, not the owner/repo shorthand: the shorthand clones over SSH and fails on a machine without GitHub SSH keys ('Host key verification failed'), verified 2026-09-27.",
+    "Update every marketplace with: claude plugin marketplace update   (or one: claude plugin marketplace update <name>). It has no scope option (its --help lists only -h): it refreshes marketplaces already declared, so a marketplace is made user-scope by its add command, never by update (SETUP 4b).",
+    "'claude plugin marketplace remove' without --scope removes the declaration from every scope (its --help); the kit always passes --scope user."
+  ],
+  "plugins": [
+    {
+      "id": "plugin:aaron-kit",
+      "install": "claude plugin install aaron-kit@aaron-kit --scope user",
+      "uninstall": "claude plugin uninstall aaron-kit@aaron-kit --scope user",
+      "marketplace": "aaron-kit",
+      "brings": "skills first-website, production-readiness, seo-strategy (shown as aaron-kit:<name>)"
+    },
+    {
+      "id": "plugin:superpowers",
+      "install": "claude plugin install superpowers@claude-plugins-official --scope user",
+      "uninstall": "claude plugin uninstall superpowers@claude-plugins-official --scope user",
+      "marketplace": "claude-plugins-official"
+    },
+    {
+      "id": "plugin:skill-creator",
+      "install": "claude plugin install skill-creator@claude-plugins-official --scope user",
+      "uninstall": "claude plugin uninstall skill-creator@claude-plugins-official --scope user",
+      "marketplace": "claude-plugins-official"
+    },
+    {
+      "id": "plugin:document-skills",
+      "install": "claude plugin install document-skills@anthropic-agent-skills --scope user",
+      "uninstall": "claude plugin uninstall document-skills@anthropic-agent-skills --scope user",
+      "marketplace": "anthropic-agent-skills",
+      "brings": "xlsx, docx, pptx, pdf skills"
+    },
+    {
+      "id": "plugin:context-mode",
+      "install": "claude plugin install context-mode@context-mode --scope user",
+      "uninstall": "claude plugin uninstall context-mode@context-mode --scope user",
+      "marketplace": "context-mode"
+    },
+    {
+      "id": "plugin:claude-mem",
+      "install": "claude plugin install claude-mem@thedotmack --scope user",
+      "uninstall": "claude plugin uninstall claude-mem@thedotmack --scope user",
+      "marketplace": "thedotmack",
+      "requires": [
+        "bun"
+      ],
+      "note": "Records every session in every project into ~/.claude-mem (SQLite database, Chroma vector store, logs, settings), runs a worker with a web viewer on localhost (port 37777 on Windows, a port in the 37700s on macOS/Linux: claude-mem 13.0.0 defaults CLAUDE_MEM_WORKER_PORT to 37700 + (uid % 100), with 77 when there is no uid as on Windows, so 37701 for a typical macOS uid 501 and 37700 for Linux uid 1000; read in its scripts/mcp-server.cjs), installs uv itself if missing, and is built on the Claude Agent SDK: it runs background Claude sessions to summarise work. Facts from its README, its code and a working install. Uninstalling the plugin does not delete ~/.claude-mem; ask the human before deleting it."
+    },
+    {
+      "id": "plugin:ui-ux-pro-max",
+      "install": "claude plugin install ui-ux-pro-max@ui-ux-pro-max-skill --scope user",
+      "uninstall": "claude plugin uninstall ui-ux-pro-max@ui-ux-pro-max-skill --scope user",
+      "marketplace": "ui-ux-pro-max-skill"
+    },
+    {
+      "id": "plugin:vercel",
+      "install": "claude plugin install vercel@claude-plugins-official --scope user",
+      "uninstall": "claude plugin uninstall vercel@claude-plugins-official --scope user",
+      "marketplace": "claude-plugins-official",
+      "note": "Includes a Vercel MCP server that asks the friend to sign in to Vercel (/mcp) the first time it is used."
+    }
+  ],
+  "pluginNotes": [
+    "Re-installing an installed plugin is safe: it prints 'already installed (scope: user)' and exits 0 (verified).",
+    "Update a plugin with: claude plugin update <plugin>@<marketplace> --scope user   (restart Claude Code to apply).",
+    "For aaron-kit, an update only arrives when Aaron raises 'version' in plugins/aaron-kit/.claude-plugin/plugin.json (verified: without a bump, update says 'already at the latest version').",
+    "Uninstall: claude plugin uninstall <plugin>@<marketplace> --scope user (verified with aaron-kit in a sandbox; the help also offers --keep-data)."
+  ],
+  "skillsCli": {
+    "package": "skills@1.7.0",
+    "addPattern": "npx -y skills@1.7.0 add <source> -g -a claude-code -s <name> [<name>...] --copy -y",
+    "removePattern": "npx -y skills@1.7.0 remove -g -a claude-code -s <name> [<name>...] -y",
+    "flags": {
+      "-g": "global (user-level) install",
+      "-a claude-code": "install for Claude Code only",
+      "-s": "only the named skills (space separated)",
+      "--copy": "real folders in <USER_CLAUDE_DIR>/skills, no symlinks",
+      "-y": "no prompts"
+    },
+    "listGlobal": "npx -y skills@1.7.0 ls -g --json",
+    "update": "Re-run the same add commands (they overwrite the kit's own skill folders with the latest; verified). 'npx -y skills@1.7.0 update -g -y' also works (verified) but the re-add keeps the flags explicit.",
+    "overwriteWarning": "add silently OVERWRITES an existing folder of the same name (verified). Before each add, check every name: if <USER_CLAUDE_DIR>/skills/<name> exists and 'ls -g --json' does not show it with the same source, ask the human first.",
+    "editCheck": "On a re-run, before re-adding, compare each kit skill's files with its install time: the newest modified time of the files in <USER_CLAUDE_DIR>/skills/<name> against skills.<name>.updatedAt in ~/.agents/.skill-lock.json. A file more than a minute newer means the human edited that skill since it was installed; ask before re-adding (the add overwrites it), and on no drop that name. (On a checked install the installed files were a few seconds older than updatedAt.)",
+    "telemetry": "The skills CLI sends an install event (CLI version, agent, source and skill names) to add-skill.vercel.sh and fetches audit data from the same host. Setting the environment variable DO_NOT_TRACK=1 or DISABLE_TELEMETRY=1 turns both off (read in its dist/cli.mjs, version 1.7.0). The kit's commands do not set it.",
+    "verified": "--help read; every source listed with --list; installs, a re-add over existing skills, ls -g --json, update -g -y and remove -g -a claude-code -s <name> -y run in a sandbox home: files landed only in the sandbox's user Claude folder plus <home>/.agents/.skill-lock.json, remove deleted the folder and its lock entry, nothing appeared in the working directory. With CLAUDE_CONFIG_DIR set to a different folder, -g installed into that folder's skills/."
+  },
+  "skills": [
+    {
+      "id": "skills:agent-browser",
+      "source": "vercel-labs/agent-browser",
+      "names": [
+        "agent-browser"
+      ],
+      "install": "npx -y skills@1.7.0 add vercel-labs/agent-browser -g -a claude-code -s agent-browser --copy -y",
+      "uninstall": "npx -y skills@1.7.0 remove -g -a claude-code -s agent-browser -y",
+      "note": "The skill is a stub that drives the agent-browser CLI: install cli:agent-browser too."
+    },
+    {
+      "id": "skills:find-skills",
+      "source": "vercel-labs/skills",
+      "names": [
+        "find-skills"
+      ],
+      "install": "npx -y skills@1.7.0 add vercel-labs/skills -g -a claude-code -s find-skills --copy -y",
+      "uninstall": "npx -y skills@1.7.0 remove -g -a claude-code -s find-skills -y",
+      "note": "Source verified: 'skills add vercel-labs/skills --list' shows find-skills as its only skill."
+    },
+    {
+      "id": "skills:supabase",
+      "source": "supabase/agent-skills",
+      "names": [
+        "supabase-postgres-best-practices"
+      ],
+      "install": "npx -y skills@1.7.0 add supabase/agent-skills -g -a claude-code -s supabase-postgres-best-practices --copy -y",
+      "uninstall": "npx -y skills@1.7.0 remove -g -a claude-code -s supabase-postgres-best-practices -y"
+    },
+    {
+      "id": "skills:stitch-design-taste",
+      "source": "leonxlnx/taste-skill",
+      "names": [
+        "stitch-design-taste"
+      ],
+      "install": "npx -y skills@1.7.0 add leonxlnx/taste-skill -g -a claude-code -s stitch-design-taste --copy -y",
+      "uninstall": "npx -y skills@1.7.0 remove -g -a claude-code -s stitch-design-taste -y",
+      "note": "Placed in Developer extras (design help, pairs with the stitch MCP server)."
+    },
+    {
+      "id": "skills:marketing-seo",
+      "source": "coreyhaines31/marketingskills",
+      "names": [
+        "ai-seo",
+        "seo-audit"
+      ],
+      "install": "npx -y skills@1.7.0 add coreyhaines31/marketingskills -g -a claude-code -s ai-seo seo-audit --copy -y",
+      "uninstall": "npx -y skills@1.7.0 remove -g -a claude-code -s ai-seo seo-audit -y"
+    },
+    {
+      "id": "skills:social-video",
+      "source": "social-media-skills/skills",
+      "names": [
+        "ai-video",
+        "ai-voiceover",
+        "captions-and-clipping",
+        "heygen",
+        "kling",
+        "luma",
+        "synthesia",
+        "talking-head-and-piece-to-camera",
+        "veo-3"
+      ],
+      "install": "npx -y skills@1.7.0 add social-media-skills/skills -g -a claude-code -s ai-video ai-voiceover captions-and-clipping heygen kling luma synthesia talking-head-and-piece-to-camera veo-3 --copy -y",
+      "uninstall": "npx -y skills@1.7.0 remove -g -a claude-code -s ai-video ai-voiceover captions-and-clipping heygen kling luma synthesia talking-head-and-piece-to-camera veo-3 -y",
+      "note": "Prompt, brief and routing skills. The tools they write for (Veo, Kling, Luma, HeyGen, Synthesia...) are paid services that need the friend's own accounts."
+    },
+    {
+      "id": "skills:higgsfield",
+      "source": "higgsfield-ai/skills",
+      "names": [
+        "higgsfield-brandkit",
+        "higgsfield-generate",
+        "higgsfield-marketplace-cards",
+        "higgsfield-product-photoshoot",
+        "higgsfield-soul-id",
+        "higgsfield-video-explainer",
+        "higgsfield-websites",
+        "higgsfield-youtube-thumbnail"
+      ],
+      "install": "npx -y skills@1.7.0 add higgsfield-ai/skills -g -a claude-code -s higgsfield-brandkit higgsfield-generate higgsfield-marketplace-cards higgsfield-product-photoshoot higgsfield-soul-id higgsfield-video-explainer higgsfield-websites higgsfield-youtube-thumbnail --copy -y",
+      "uninstall": "npx -y skills@1.7.0 remove -g -a claude-code -s higgsfield-brandkit higgsfield-generate higgsfield-marketplace-cards higgsfield-product-photoshoot higgsfield-soul-id higgsfield-video-explainer higgsfield-websites higgsfield-youtube-thumbnail -y",
+      "note": "Need a paid Higgsfield account. The skills wrap the 'higgsfield' CLI and install it on first use with a curl | sh script (macOS/Linux); sign-in is 'higgsfield auth login'."
+    }
+  ],
+  "gsd": {
+    "id": "gsd",
+    "name": "Get Shit Done (GSD) v1.42.3",
+    "install": "npx -y get-shit-done-cc@1.42.3 --claude --global",
+    "uninstall": "npx -y get-shit-done-cc@1.42.3 --claude --global --uninstall",
+    "uninstallNote": "The uninstall never removes the gsd-sdk command the install linked (its uninstall function in bin/install.js has no gsd-sdk step): on Windows the gsd-sdk, gsd-sdk.cmd and gsd-sdk.ps1 shims in npm's global folder (npm prefix -g); on macOS/Linux the gsd-sdk link in a home-folder PATH folder or ~/.local/bin. Undo tells the human it stays and deletes it only on their yes, and only when the record lists gsd in installedByKit and the command found by 'command -v gsd-sdk' or 'Get-Command gsd-sdk' points into get-shit-done-cc (a link or shim naming get-shit-done-cc/bin/gsd-sdk.js); otherwise it leaves it.",
+    "update": "Re-run the same install command (an upgrade from 1.41.1 to 1.42.3 worked this way). Never pass --force-statusline: an existing status line is the friend's own.",
+    "brings": "33 gsd-* agents in agents/, 67 gsd-* skills in skills/ (the default 'full' profile; the installer's help says 'all 66 skills', but the package ships 67 command files and a sandbox install created 67), 11 hook files in hooks/ plus their settings.json entries, a status line (a non-interactive run keeps an existing one), get-shit-done/, gsd-install-state.json, and a gsd-sdk command (where it goes: scopeRule.expectedUserLevelWrites)",
+    "profile": "The default 'full' profile, on purpose: the same GSD version as Aaron's machine (1.42.3, 33 gsd agents); unlike Aaron's install, which has no gsd-* skills, the friend gets all 67 gsd-* skills (about 12k tokens per session). Decided by Aaron, 2026-09-27 (docs/DECISIONS.md); a lighter profile to match Aaron's install is OPEN for Aaron. The kit's install command passes no --profile.",
+    "cost": "The full profile adds about 12,000 tokens to the start of every session in every project (installer help: '--minimal ... Cuts cold-start overhead from ~12k tokens to ~700'). Aaron's own install has no gsd-* skills in its skills folder, so it carries less than the friend would.",
+    "deprecated": "npm marks get-shit-done-cc as deprecated ('Package no longer supported') and github.com/gsd-build/get-shit-done is archived with a notice that GSD moved to github.com/open-gsd/gsd-core (npm @opengsd/gsd-core, v1.15.0, needs Node 24+, same --claude --global flags per its --help). The kit keeps 1.42.3 (Aaron, 2026-09-27); switching is OPEN for Aaron.",
+    "verify": [
+      "<USER_CLAUDE_DIR>/get-shit-done/VERSION reads 1.42.3 and agents/ holds 33 gsd-*.md files",
+      "gsd-sdk runs: 'command -v gsd-sdk' (bash, zsh, Git Bash) or 'Get-Command gsd-sdk' (PowerShell) finds it. If not, ask the human to run the same line in a new terminal window (a folder newly added to PATH shows up only there). Still not found: follow gsd.sdkPath."
+    ],
+    "sdkPath": "GSD workflows call the gsd-sdk command (79 of the 90 workflow files in get-shit-done/workflows use 'gsd-sdk query ...'), and the installer only links it: on macOS/Linux into the first writable folder inside the home folder that is on PATH, else ~/.local/bin even when that is not on PATH; on Windows into npm prefix -g (read in bin/install.js, trySelfLinkGsdSdk). When it is not found, report 'GSD installed, gsd-sdk not on PATH' and show the human the lines the installer printed after 'gsd-sdk is not on your PATH' (its 'Shim written to:' folder and the PATH lines for their shell). Change the shell profile or PATH only on the human's yes, the same way as cli:agent-browser.ifEacces: on macOS/Linux append export PATH=\"<that folder>:$PATH\" to ~/.zshrc (macOS) or ~/.bashrc (Linux); on Windows run the PowerShell line the installer printed (it adds the folder to the user PATH permanently). Then ask them to open a new terminal and check again; Step 6 records gsd-sdk-path. On no, leave it and say GSD commands that call gsd-sdk will fail until it is on PATH. Do not run the installer's other suggestion, npm install -g get-shit-done-cc: it is not in the kit (unpinned).",
+    "verified": "--help read (-g/--global, --claude, -u/--uninstall, --profile); full install in a sandbox home with no prompts: everything landed in the sandbox's user Claude folder (it follows CLAUDE_CONFIG_DIR), nothing in the working directory. The uninstall command removed the 67 skills, get-shit-done/, the 33 agents, 11 hooks, the status line and the hook entries, and left gsd-install-state.json. An earlier sandbox install linked gsd-sdk into the maintainer's real npm global folder; in the 2026-09-27 rerun no link was made because gsd-sdk was already on PATH. The uninstall does not remove the gsd-sdk link: its uninstall function in bin/install.js (1.42.3) has no gsd-sdk step (read 2026-09-27; see uninstallNote).",
+    "open": [
+      "Switching to GSD Core: get-shit-done-cc is deprecated in favour of @opengsd/gsd-core (Node 24+); see gsd.deprecated. The kit keeps 1.42.3 with the full profile until Aaron decides.",
+      "A lighter profile to match Aaron's install (he has no gsd-* skills): OPEN for Aaron. The kit installs the default full profile (67 gsd-* skills, about 12k tokens per session).",
+      "gsd-sdk depends on npm's npx cache: the link points at <npm cache>/_npx/<hash>/node_modules/get-shit-done-cc/bin/gsd-sdk.js (a symlink on macOS/Linux; on Windows .cmd, .ps1 and sh shims that run node on that path; read in bin/install.js and get-shit-done/bin/lib/shell-command-projection.cjs). Anything that deletes <npm cache>/_npx (newer npm's 'npm cache npx rm --force', deleting npm's cache folder by hand, a disk clean-up tool) breaks every GSD workflow that calls gsd-sdk. 'npm cache clean --force' does not: it deletes only <npm cache>/_cacache (read in npm 10.9.2 and npm 12.1.0, lib/commands/cache.js). Recovery: re-run the paste prompt, which re-runs the pinned npx install (it downloads the package into the npx cache again and runs the link step; not tested)."
+    ]
+  },
+  "cliTools": [
+    {
+      "id": "cli:agent-browser",
+      "install": [
+        "npm install -g agent-browser",
+        "agent-browser install"
+      ],
+      "check": "agent-browser --version   (report the version it prints)",
+      "uninstall": [
+        "npm uninstall -g agent-browser"
+      ],
+      "uninstallNote": "~/.agent-browser/ holds the Chrome it downloaded; delete that folder only on the human's yes.",
+      "note": "From the agent-browser skill's own 'Install:' line. npm's latest is 0.38.1, but every release from 0.27.1 on declares node >=24, so on Node 22 npm installs 0.27.0 (May 2026). The skill stub still works with 0.27.0. 'agent-browser install' downloads Chrome into ~/.agent-browser/. Not run by the kit's maintainers: on Windows the binary finds the home folder through the system (SHGetKnownFolderPath), not HOME or USERPROFILE, so a sandbox cannot contain the download.",
+      "ifEacces": "On macOS or Linux, 'npm install -g' can fail with EACCES when npm's global folder is owned by root. Tell the human; only on their yes run 'npm config set prefix ~/.npm-global --location user', add ~/.npm-global/bin to PATH in their shell profile (~/.zshrc on macOS, ~/.bashrc on Linux) and ask them to open a new terminal and re-run the prompt. Step 6 records npm-prefix. Otherwise mark agent-browser skipped. Never use sudo.",
+      "ifEaccesWrites": "The yes changes two user files outside the user Claude folder: ~/.npmrc (npm config set ... --location user writes npm's user config file; it gains prefix=~/.npm-global, expanded) and ~/.zshrc or ~/.bashrc (one PATH line). Both are listed in scopeRule.expectedUserLevelWrites.",
+      "ifEaccesUndo": "Undo tells the human these stay, and reverts them only on their yes, after the kit's npm packages are uninstalled: 'npm config delete prefix --location user' (removes the prefix line from ~/.npmrc), then remove the export PATH line for ~/.npm-global/bin from ~/.zshrc or ~/.bashrc. ~/.npm-global itself is deleted only on a separate yes (other global packages may live there)."
+    }
+  ],
+  "keyEntry": {
+    "default": "selfRun",
+    "selfRun": {
+      "why": "The key never enters the chat, Claude Code's session history, memory tools or shell history, and no angle brackets are left in the command.",
+      "build": "Take the server's add command for the detected OS and replace the whole placeholder, angle brackets included, with $K (bash/zsh) or $k (PowerShell), keeping the double quotes around it. Wrap it as below and show the human that one line.",
+      "bash": "printf 'Paste your key: '; read -rs K && echo && <ADD_COMMAND_USING_$K>; unset K",
+      "powershell": "$s = Read-Host 'Paste your key' -AsSecureString; $k = [Net.NetworkCredential]::new('', $s).Password; <ADD_COMMAND_USING_$k>; Remove-Variable k, s",
+      "whichOne": "macOS and Linux: the bash line (it works in zsh too). Windows: the PowerShell line; the Git Bash line also works in Git Bash.",
+      "humanSteps": "Open a second terminal window (not this Claude session), paste the line, press Enter, paste the key when it asks (nothing shows on screen, or only stars), press Enter, then tell Claude 'done'. Claude then checks it with the filtered 'claude mcp get' from Step 5.",
+      "powershellShim": "If 'Get-Command claude' in PowerShell shows a .ps1 file rather than claude.exe, PowerShell can drop the '--' before the server command; use claude.cmd in its place, or Git Bash. (Documented PowerShell behaviour for scripts; not reproduced here, where claude is claude.exe.)",
+      "verified": "bash form with a dummy key piped in, for an --env server (nano-banana-pro, meta-ads) and a --header server (stitch), in a sandbox CLAUDE_CONFIG_DIR: added at user scope and Connected. PowerShell 5.1: the SecureString conversion and the add line with a dummy value worked with claude.exe; Read-Host itself needs a real terminal and was not run."
+    },
+    "pasteInChat": {
+      "fallback": true,
+      "tellFirst": "If you paste the key here instead, it becomes part of this conversation: it is sent to Anthropic with the chat, saved in Claude Code's session history on this computer, and memory tools such as claude-mem or context-mode may record it. Running the line yourself avoids that.",
+      "then": "Only after the human still chooses it: put the key in place of the placeholder inside the double quotes, run the command, and never repeat the key."
+    },
+    "never": "Never write a key into any file, script, note or record, the kit folder included. Never echo it, repeat it or print it in a summary."
+  },
+  "mcpServers": [
+    {
+      "id": "mcp:context7",
+      "name": "context7",
+      "what": "Up-to-date library and framework docs",
+      "key": null,
+      "add": {
+        "all": "claude mcp add --scope user --transport http context7 https://mcp.context7.com/mcp"
+      },
+      "uninstall": "claude mcp remove context7 --scope user",
+      "verified": "verified shape; added and removed in a sandbox; health check Connected"
+    },
+    {
+      "id": "mcp:playwright",
+      "name": "playwright",
+      "what": "Control a real browser (click, type, screenshot)",
+      "key": null,
+      "add": {
+        "all": "claude mcp add --scope user playwright -- npx -y @playwright/mcp@0.0.82"
+      },
+      "uninstall": "claude mcp remove playwright --scope user",
+      "note": "The public package (npm @playwright/mcp, bin playwright-mcp), pinned to the version current on 2026-09-27. Aaron bumps the pin deliberately.",
+      "verified": "added in a sandbox; health check Connected. A machine without a browser: OPEN (not tested)"
+    },
+    {
+      "id": "mcp:shadcn",
+      "name": "shadcn",
+      "what": "Search and add shadcn/ui components",
+      "key": null,
+      "add": {
+        "all": "claude mcp add --scope user shadcn -- npx -y shadcn@4.21.0 mcp"
+      },
+      "uninstall": "claude mcp remove shadcn --scope user",
+      "note": "Pinned to the version current on 2026-09-27 rather than shadcn@latest.",
+      "verified": "added in a sandbox; health check Connected"
+    },
+    {
+      "id": "mcp:stitch",
+      "name": "stitch",
+      "what": "Google Stitch UI design generation",
+      "key": {
+        "placeholder": "<YOUR_STITCH_API_KEY>",
+        "as": "header X-Goog-Api-Key",
+        "getItFrom": "the friend's own Google Stitch API key (stitch.withgoogle.com)"
+      },
+      "add": {
+        "all": "claude mcp add --scope user --transport http stitch https://stitch.googleapis.com/mcp --header \"X-Goog-Api-Key: <YOUR_STITCH_API_KEY>\""
+      },
+      "uninstall": "claude mcp remove stitch --scope user",
+      "verified": "URL and header name: verified shape; added in a sandbox with a dummy value through the bash selfRun line"
+    },
+    {
+      "id": "mcp:21st",
+      "name": "21st",
+      "what": "21st.dev component search and generation (can use paid credits on the friend's own 21st.dev account)",
+      "key": {
+        "placeholder": "<YOUR_21ST_API_KEY>",
+        "as": "header x-api-key",
+        "getItFrom": "the friend's own 21st.dev account"
+      },
+      "add": {
+        "all": "claude mcp add --scope user --transport http 21st https://21st.dev/api/mcp --header \"x-api-key: <YOUR_21ST_API_KEY>\""
+      },
+      "uninstall": "claude mcp remove 21st --scope user",
+      "verified": "URL and header name: verified shape; added in isolation with a dummy value (health check says 'Needs authentication' until a real key is used)"
+    },
+    {
+      "id": "mcp:meta-ads",
+      "name": "meta-ads",
+      "what": "Read and manage Meta (Facebook/Instagram) ad campaigns. It can create and change campaigns and budgets, which spends real money: Claude Code asks before each action, so read each request before saying yes.",
+      "key": {
+        "placeholder": "<YOUR_META_ACCESS_TOKEN>",
+        "as": "env META_ACCESS_TOKEN",
+        "getItFrom": "an access token from the friend's own Meta app (developers.facebook.com). A token copied from the Graph API Explorer expires within hours and a long-lived token after about 60 days; when it expires the server stops working, and the friend adds a fresh one (remove the server, then add it again)."
+      },
+      "requires": [
+        "uv"
+      ],
+      "add": {
+        "all": "claude mcp add --scope user meta-ads --env \"META_ACCESS_TOKEN=<YOUR_META_ACCESS_TOKEN>\" -- uvx meta-ads-mcp@1.0.128"
+      },
+      "uninstall": "claude mcp remove meta-ads --scope user",
+      "verified": "verified command shape; PyPI meta-ads-mcp 1.0.128 is the latest (github.com/pipeboard-co/meta-ads-mcp, whose SECURITY.md documents META_ACCESS_TOKEN); pinned form added in a sandbox with a dummy token through the bash selfRun line; health check Connected"
+    },
+    {
+      "id": "mcp:nano-banana-pro",
+      "name": "nano-banana-pro",
+      "what": "Gemini image generation and editing (can be billed to the friend's own Google account)",
+      "key": {
+        "placeholder": "<YOUR_GEMINI_API_KEY>",
+        "as": "env GEMINI_API_KEY",
+        "getItFrom": "the friend's own Gemini API key (Google AI Studio, aistudio.google.com)"
+      },
+      "add": {
+        "macos": "claude mcp add --scope user nano-banana-pro --env \"GEMINI_API_KEY=<YOUR_GEMINI_API_KEY>\" -- npx -y @rafarafarafa/nano-banana-pro-mcp@1.0.4",
+        "linux": "claude mcp add --scope user nano-banana-pro --env \"GEMINI_API_KEY=<YOUR_GEMINI_API_KEY>\" -- npx -y @rafarafarafa/nano-banana-pro-mcp@1.0.4",
+        "windows": [
+          "copy launcher.mjs, package.json and package-lock.json from the kit folder files/mcp/nano-banana-pro/ into <USER_CLAUDE_DIR>/mcp/nano-banana-pro/ with the shell (create the folder; if a file there differs, per fileHelper same, ask before replacing it)",
+          "npm ci --prefix \"<USER_CLAUDE_DIR>/mcp/nano-banana-pro\" --no-audit --no-fund   (run only after the previous step put package.json and package-lock.json there; no cd needed)",
+          "claude mcp add --scope user nano-banana-pro --env \"GEMINI_API_KEY=<YOUR_GEMINI_API_KEY>\" -- node \"<USER_CLAUDE_DIR>/mcp/nano-banana-pro/launcher.mjs\""
+        ]
+      },
+      "uninstall": {
+        "all": "claude mcp remove nano-banana-pro --scope user",
+        "windowsAlso": "then, on the human's yes, delete <USER_CLAUDE_DIR>/mcp/nano-banana-pro/"
+      },
+      "note": "On Windows the package's own entry never starts (Unix-only path check), so plain npx gives 'Connection closed'; the kit ships a small launcher for Windows with exact versions and a lockfile (@rafarafarafa/nano-banana-pro-mcp 1.0.4, the only published version; @modelcontextprotocol/sdk 1.30.0, the version verified with the launcher).",
+      "verified": "Linux (WSL): the npx package answered an MCP initialize with a dummy key. Windows: the npx form failed the health check ('Connection closed'); the kit's launcher after 'npm ci --prefix' into a sandbox folder answered initialize with a dummy key, and the added server was Connected (bash selfRun line and the PowerShell line)."
+    }
+  ],
+  "mcpNotes": [
+    "'claude mcp list' shows names, commands and URLs but not key values. 'claude mcp get <name>' PRINTS header and env values: when verifying, show only its Scope and Status lines.",
+    "Adding a name that already exists in user config fails with 'already exists in user config' (exit 1). To change a key: claude mcp remove <name> --scope user, then add again.",
+    "A same-name server at local scope wins over the user one: in a sandbox, with context7 at local scope, adding it at user scope succeeded (exit 0), but 'claude mcp get context7' kept showing 'Scope: Local config (private to you in this project)' until 'claude mcp remove context7 --scope local', after which it showed 'Scope: User config (available in all your projects)'.",
+    "Keys are stored by Claude Code in ~/.claude.json (user level). They are never written into the kit folder."
+  ],
+  "record": {
+    "path": "<USER_CLAUDE_DIR>/claude-kit-record.json",
+    "shape": {
+      "kitVersion": "kit.version at the last run",
+      "lastRun": "ISO date and time of the last run",
+      "installedByKit": ["ids the kit itself installed or added: item ids (file:rules, plugin:superpowers, skills:higgsfield, gsd, cli:agent-browser, mcp:context7...), marketplace:<name> for each marketplace it added, and the shell changes the human said yes to: npm-prefix (cli:agent-browser.ifEacces) and gsd-sdk-path (gsd.sdkPath)"],
+      "foundAlreadyThere": ["ids that were already present the first time the kit looked, and were left alone"]
+    },
+    "rules": "Claude writes it with its file tool at the end of every run (Step 6), merging with the existing record and never dropping ids. It holds ids and dates only: no keys, no file contents."
+  },
+  "undo": {
+    "order": ["MCP servers", "CLI tools", "GSD", "skills", "plugins", "marketplaces", "files", "shell changes (npm-prefix, gsd-sdk-path)"],
+    "scope": "Remove only ids listed in record.installedByKit, after asking the human which groups to remove. Anything in foundAlreadyThere stays. Without a record, ask item by item.",
+    "commands": "each item's uninstall field",
+    "shellChanges": "npm-prefix and gsd-sdk-path stay unless the human says yes. npm-prefix: see cli:agent-browser.ifEaccesUndo ('npm config delete prefix --location user', then the PATH line). gsd-sdk-path: on macOS/Linux remove the export PATH line the kit added to ~/.zshrc or ~/.bashrc; on Windows tell the human which folder was added to the user PATH and that they can remove it themselves (Start menu: 'Edit environment variables for your account', then Path); the kit does not edit the Windows PATH on Undo.",
+    "gsdSdkLink": "After the GSD uninstall, tell the human the gsd-sdk command is still there (gsd.uninstallNote) and delete it only on their yes, as gsd.uninstallNote says; the gsd-sdk-path shell change is separate (shellChanges).",
+    "keeps": "the backups, the kit folder (the human can delete it afterwards, once aaron-kit is uninstalled), ~/.claude-mem, ~/.agent-browser, <USER_CLAUDE_DIR>/mcp/nano-banana-pro, the gsd-sdk link (GSD's uninstall leaves it), ~/.npmrc's prefix, ~/.npm-global and the PATH lines unless the human says to remove them",
+    "notRestored": "Restoring an old .claude.json or settings.json backup is not part of Undo: it would also roll back everything Claude Code and other tools changed since."
+  },
+  "verification": {
+    "plugins": "claude plugin list --json   -> every chosen plugin present with \"scope\": \"user\" and \"enabled\": true",
+    "marketplaces": "claude plugin marketplace list --json   -> every needed marketplace present. That list has no scope field, so also prove user scope with fileHelper keys (key names only; check both files, since a marketplace can be known from either: on a checked machine claude-plugins-official was in known_marketplaces.json but not in extraKnownMarketplaces): each kit marketplace is a key of <USER_CLAUDE_DIR>/settings.json -> extraKnownMarketplaces or of <USER_CLAUDE_DIR>/plugins/known_marketplaces.json. Negative check, on every settings file the snapshot watched: the .claude/settings.local.json of the home folder and of the session folder, and their .claude/settings.json unless that .claude/ is USER_CLAUDE_DIR (so HOME_DIR/.claude/settings.json is checked when CLAUDE_CONFIG_DIR points elsewhere). A kit marketplace there is a problem only when it is new since the snapshot: fileHelper compare lists it under that file's marketplacesAdded. A kit marketplace fileHelper keys finds there that compare does not list as added was there before the run: report it as 'found in your project settings, left alone', not as a failure.",
+    "mcp": "claude mcp list, then for each chosen server: claude mcp get <name> filtered to the Scope and Status lines -> 'Scope: User config (available in all your projects)', or a local entry the human chose to keep (reported under Skipped)",
+    "skills": "each chosen skill name is a folder with SKILL.md in <USER_CLAUDE_DIR>/skills, and npx -y skills@1.7.0 ls -g --json shows it with scope global",
+    "files": "fileHelper rulesStatus -> state current (or unmarked when the rules were already there) and headingCount 1; fileHelper same on the command -> same (or the human kept their own)",
+    "gsd": "<USER_CLAUDE_DIR>/get-shit-done/VERSION reads 1.42.3; <USER_CLAUDE_DIR>/agents holds 33 gsd-*.md files; gsd-sdk is found by 'command -v gsd-sdk' or 'Get-Command gsd-sdk' (a new terminal if needed), else report 'GSD installed, gsd-sdk not on PATH' and follow gsd.sdkPath",
+    "cli": "agent-browser --version prints a version (report it)",
+    "record": "<USER_CLAUDE_DIR>/claude-kit-record.json exists and lists what this run installed",
+    "workingDirectory": "fileHelper compare against the Step 1b snapshot prints result clean: in the home folder and the session folder none of scopeRule.mustNotAppearInWorkingDirectory appeared, disappeared or changed, and no file under a watched .claude/ (the session folder's when it is not the home folder; the home folder's when USER_CLAUDE_DIR is not HOME_DIR/.claude) is new, removed or changed (scopeRule.sessionFolderClaudeDir). A settings.local.json change only under permissions is the human's approvals, and a new folder whose contents were all compared and none flagged is not a finding: both are listed under ignored, not flagged. A local-scope MCP server is caught by the mcp check above. Then delete <USER_CLAUDE_DIR>/claude-kit-snapshot.json with the shell."
+  },
+  "open": [
+    "aaron-kit by git URL: adding the marketplace by its HTTPS git URL instead of the local folder would remove the keep-the-folder rule. The earlier objection, that every marketplace update would need the friend's git credentials, no longer applies now that the repo is public (2026-09-27). Not tried; Aaron to decide.",
+    "GSD Core: get-shit-done-cc is deprecated on npm and its repo archived; successor @opengsd/gsd-core (Node 24+). The kit keeps 1.42.3 (the same version as Aaron's machine) with its default full profile (decided 2026-09-27); switching is Aaron's call.",
+    "GSD profile: unlike Aaron's install, which has no gsd-* skills, the friend gets all 67 gsd-* skills (about 12k tokens per session). A lighter profile to match Aaron's install is Aaron's call.",
+    "A kit marketplace that is listed by claude plugin marketplace list but declared only at project or local scope: SETUP 4b then runs its user-scope add as well. That this add writes the user declaration when the marketplace is already on disk was not verified in a sandbox; Step 5's key check catches it if not.",
+    "gsd-sdk after an npx cache clean-up: deleting <npm cache>/_npx breaks gsd-sdk (gsd.open); that re-running the paste prompt restores it was not tested.",
+    "agent-browser CLI: 'agent-browser install' (the Chrome download) was never run, because on Windows it writes into the real home folder even inside a sandbox.",
+    "playwright MCP on a machine with no browser installed: not tested.",
+    "Higgsfield CLI on Windows: the skills' installer line is a curl | sh script; a Windows path was not verified.",
+    "macOS: no command has been run on macOS yet. The commands were checked on Windows (Git Bash and PowerShell 5.1) and, for nano-banana-pro only, on Linux through WSL. The EACCES behaviour of root-owned npm folders comes from npm's docs.",
+    "PowerShell with an npm-installed claude.ps1: that PowerShell can drop the '--' in 'claude mcp add ... -- <command>' is documented behaviour, not reproduced here (this machine has claude.exe).",
+    "The social-media-skills video skills mention companion skills that are not in the kit (veo-3, for example, reads brand-profile). They install without them, and Aaron runs the same set; how well each works without its companions was not checked."
+  ],
+  "notIncluded": [
+    {
+      "item": "hormozi-advisor skill",
+      "reason": "Built for Aaron's company; depends on his own private files."
+    },
+    {
+      "item": "ux-checkmait skill, ux-design and ux-review commands",
+      "reason": "The house UI rules of Aaron's company; company-specific."
+    },
+    {
+      "item": "syncing-clickup-projects skill and its eval workspace",
+      "reason": "Wired to Aaron's own project-management workspaces."
+    },
+    {
+      "item": "skills/synced",
+      "reason": "Comes from each person's own claude.ai account, not from a kit."
+    },
+    {
+      "item": "The auto-allow PermissionRequest hook",
+      "reason": "It approves every permission prompt automatically; too risky to hand to someone else."
+    },
+    {
+      "item": "MCP servers ghl, liquid-sunset, quickbooks, gimp",
+      "reason": "Tied to Aaron's businesses, accounts or local tools."
+    },
+    {
+      "item": "Token and credential files",
+      "reason": "Secrets; never shared."
+    },
+    {
+      "item": "history, projects, memory, permissions",
+      "reason": "Personal session data and Aaron's own approvals."
+    },
+    {
+      "item": "claude.ai connectors (Gmail, Google Drive, Calendar, Notion, Figma, Stripe, Supabase, Vercel...)",
+      "reason": "Per account: the friend connects their own in claude.ai Settings > Connectors."
+    }
+  ]
+}

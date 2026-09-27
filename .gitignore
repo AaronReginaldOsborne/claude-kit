@@ -1,0 +1,23 @@
+# Never commit secrets or machine-specific files
+.env
+.env.*
+*.key
+*token*.txt
+*.bak-*
+.claude.json
+.npmrc
+*.pem
+id_rsa*
+*credentials*.json
+service-account*.json
+secrets*.json
+
+# Dependencies (the Windows launcher is npm-installed in the user Claude folder, not here)
+node_modules/
+
+# Local Claude Code state
+.claude/settings.local.json
+
+# OS clutter
+.DS_Store
+Thumbs.db

@@ -1,0 +1,9 @@
+{
+  "name": "nano-banana-pro-launcher",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "@rafarafarafa/nano-banana-pro-mcp": "1.0.4"
+  }
+}

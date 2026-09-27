@@ -1,0 +1,17 @@
+{
+  "name": "aaron-kit",
+  "owner": {
+    "name": "Aaron Osborne"
+  },
+  "metadata": {
+    "description": "Aaron's Claude Code starter kit: his own skills, packaged as one plugin",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "aaron-kit",
+      "description": "Three skills: first-website (new client website intake), production-readiness (triaged launch audit), seo-strategy (article optimization and full site SEO audit)",
+      "source": "./plugins/aaron-kit"
+    }
+  ]
+}
