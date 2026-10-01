@@ -5,12 +5,12 @@
   },
   "metadata": {
     "description": "Aaron's Claude Code starter kit: his own skills, packaged as one plugin",
-    "version": "1.0.0"
+    "version": "1.1.0"
   },
   "plugins": [
     {
       "name": "aaron-kit",
-      "description": "Three skills: first-website (new client website intake), production-readiness (triaged launch audit), seo-strategy (article optimization and full site SEO audit)",
+      "description": "Four skills: first-website (new client website intake), production-readiness (triaged launch audit), seo-strategy (article optimization and full site SEO audit), client-website-build (design and build a client's marketing website: references, brand design kit, booking questionnaire, preview-only sample photos, QA, preview deploy, client email)",
       "source": "./plugins/aaron-kit"
     }
   ]

@@ -1,7 +1,7 @@
 {
   "name": "aaron-kit",
-  "version": "1.0.0",
-  "description": "Three skills: first-website (new client website intake), production-readiness (triaged launch audit), seo-strategy (article optimization and full site SEO audit)",
+  "version": "1.1.0",
+  "description": "Four skills: first-website (new client website intake), production-readiness (triaged launch audit), seo-strategy (article optimization and full site SEO audit), client-website-build (design and build a client's marketing website: references, brand design kit, booking questionnaire, preview-only sample photos, QA, preview deploy, client email)",
   "author": {
     "name": "Aaron Osborne"
   }

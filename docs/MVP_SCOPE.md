@@ -2,7 +2,7 @@
 
 ## In
 - Anti-vibe-coding rules added once to the user `CLAUDE.md` as a marked block (updated on a re-run only after a yes); `/antivibe-docs` copied to the user `commands/`. Both asked about on their own inside Core.
-- `aaron-kit` plugin (first-website, production-readiness, seo-strategy) served from this repo as a local-directory marketplace; the friend keeps the clone in place.
+- `aaron-kit` plugin (first-website, production-readiness, seo-strategy, client-website-build) served from this repo as a local-directory marketplace; the friend keeps the clone in place.
 - Public plugins (8 plugins in all with aaron-kit): superpowers, skill-creator, vercel (claude-plugins-official); context-mode; claude-mem (asked about on its own); document-skills; ui-ux-pro-max.
 - Public skills via the skills CLI 1.7.0, installed from their sources (23): agent-browser, find-skills, supabase-postgres-best-practices, stitch-design-taste, ai-seo, seo-audit, nine video/voice skills, eight Higgsfield skills.
 - GSD 1.42.3 (global, default full profile; the same version as Aaron's machine; unlike Aaron's install, the friend gets all 67 gsd-* skills, about 12k tokens per session) and the agent-browser CLI.

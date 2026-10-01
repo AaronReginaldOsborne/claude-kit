@@ -54,7 +54,7 @@ IDs are stable; never renumber. Status: BUILT (written and verified per command,
 - AC4: no file of a `notIncluded` item exists in the repo.
 
 ## KIT-011 Verbatim copies (DONE)
-- AC1: `files/CLAUDE.md`, `files/commands/antivibe-docs.md` and the three `plugins/aaron-kit/skills/*/SKILL.md` have the same sha256 as their originals in Aaron's user Claude folder at the time of copying.
+- AC1: `files/CLAUDE.md`, `files/commands/antivibe-docs.md` and every file under `plugins/aaron-kit/skills/` (four skills; `client-website-build` has a `reference/` folder) have the same sha256 as their originals in Aaron's user Claude folder at the time of copying.
 - AC2: `claude plugin validate .` and `claude plugin validate ./plugins/aaron-kit --strict` pass.
 
 ## KIT-012 Repo access (BUILT: the repo is public, Aaron's decision 2026-09-27; created and pushed 2026-09-27)

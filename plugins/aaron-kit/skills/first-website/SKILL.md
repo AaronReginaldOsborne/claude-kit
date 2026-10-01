@@ -67,3 +67,11 @@ The list should always cover these categories, adapted to the business:
 - **Real estate agent**: listings feed or manual listings, bio, areas served
 
 Adapt the list intelligently — don't just swap in keywords, think about what actually matters for that business type.
+
+## After the intake
+
+If the developer is building the site, continue with the `client-website-build` skill once the list is sent. Add these questions to the list, because that build needs them:
+- May the site show your street address? (A shop usually says yes; a home business often says no.)
+- Where should website requests go: text, email, or both?
+- Your policies, in your own words (deposits, cancellations, anything customers must agree to).
+- What makes you different, in your own words? (The site only publishes what you tell me.)

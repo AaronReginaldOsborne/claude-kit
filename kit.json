@@ -288,7 +288,7 @@
       "install": "claude plugin install aaron-kit@aaron-kit --scope user",
       "uninstall": "claude plugin uninstall aaron-kit@aaron-kit --scope user",
       "marketplace": "aaron-kit",
-      "brings": "skills first-website, production-readiness, seo-strategy (shown as aaron-kit:<name>)"
+      "brings": "skills first-website, production-readiness, seo-strategy, client-website-build (shown as aaron-kit:<name>)"
     },
     {
       "id": "plugin:superpowers",

@@ -35,7 +35,7 @@ The detail, for Aaron and the curious (exact items and commands are in `kit.json
 
 | Group | What is in it |
 |---|---|
-| **Core** (recommended) | `aaron-kit` plugin (skills: first-website, production-readiness, seo-strategy), superpowers, skill-creator, document-skills (Word, Excel, PowerPoint, PDF); asked separately: the anti-vibe-coding rules (a marked block appended to `~/.claude/CLAUDE.md`) and the `/antivibe-docs` command |
+| **Core** (recommended) | `aaron-kit` plugin (skills: first-website, production-readiness, seo-strategy, client-website-build), superpowers, skill-creator, document-skills (Word, Excel, PowerPoint, PDF); asked separately: the anti-vibe-coding rules (a marked block appended to `~/.claude/CLAUDE.md`) and the `/antivibe-docs` command |
 | **Developer extras** | GSD 1.42.3, the same version as Aaron's machine, with its default full profile (33 agents, 67 skills, hooks, status line, the `gsd-sdk` command; unlike Aaron's install, you get all 67 gsd-* skills, about 12k tokens per session), context-mode, ui-ux-pro-max, vercel, supabase-postgres-best-practices, agent-browser (plus its CLI and a Chrome download), find-skills, stitch-design-taste; asked separately: claude-mem (needs Bun; data in `~/.claude-mem`, a small background service on this computer: localhost, port 37777 on Windows, a port in the 37700s on macOS/Linux) |
 | **Marketing and content** | ai-seo, seo-audit; ai-video, ai-voiceover, captions-and-clipping, heygen, kling, luma, synthesia, talking-head-and-piece-to-camera, veo-3; eight Higgsfield skills (need a Higgsfield account) |
 | **Extra connections** | MCP servers, picked one at a time: context7, playwright, shadcn (no key); stitch, 21st, meta-ads, nano-banana-pro (your own key; packages pinned to exact versions) |
@@ -84,7 +84,7 @@ kit.json                      source of truth: groups, commands, uninstall comma
 SETUP.md                      instructions for the friend's Claude Code (install, re-run, undo)
 tools/kit-files.mjs           small Node helper: adds, updates or removes the rules block in ~/.claude/CLAUDE.md, snapshots and re-checks the working folders, prints JSON key names (never values)
 .claude-plugin/marketplace.json   this repo is the "aaron-kit" plugin marketplace
-plugins/aaron-kit/            the aaron-kit plugin (plugin.json + three skills, copied verbatim)
+plugins/aaron-kit/            the aaron-kit plugin (plugin.json + four skills, copied verbatim)
 files/CLAUDE.md               the anti-vibe-coding rules (added to ~/.claude/CLAUDE.md as a marked block)
 files/commands/antivibe-docs.md   the /antivibe-docs command
 files/mcp/nano-banana-pro/    Windows-only launcher for the nano-banana-pro MCP server (exact versions + lockfile)

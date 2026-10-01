@@ -173,3 +173,18 @@ ADR style: decision, rationale, source. Newest decisions are appended at the end
 - **Decision:** `https://github.com/AaronReginaldOsborne/claude-kit` is a public repo (created and pushed 2026-09-27). Anyone can clone it over HTTPS with no GitHub account, invite or sign-in, and later pulls need none either. The README's "Before you paste" list drops the GitHub account, invite, `gh auth login` and Git Credential Manager item; "Getting access to the repo" becomes "Where the kit lives"; the friend's-username OPEN item is gone. The paste prompt keeps its behaviour except the private-repo stop: if the clone fails, it stops and shows the error in plain words, and SETUP does the same for a failed pull ("Re-running", "If something goes wrong"). `kit.repoStatus` reads public, `kit.access` says anyone can clone over HTTPS. CLAUDE.md rule 10: everything committed is world-readable, so the no-secrets and no-personal-items rules are absolute. KIT-012 and F5 are BUILT, S10 is DONE. Switching the aaron-kit marketplace to its git URL stays OPEN for Aaron, without the sign-in objection. Supersedes "The kit is a private GitHub repo".
 - **Rationale:** the friend needs no GitHub account, invite or sign-in, so the paste prompt is truly copy-paste-and-go. The repo holds no secrets (two independent scans before publishing; the KIT-010 AC1 and AC2 searches found nothing again on 2026-09-27), and commits use the GitHub noreply address (the repo's `user.email`).
 - **Source:** Aaron, 2026-09-27.
+
+## 2026-09-30 A fourth skill, client-website-build; first-website hands off to it (plugin 1.1.0)
+- **Decision:**
+  - add Aaron's `client-website-build` skill to the `aaron-kit` plugin. It is a `SKILL.md` plus `reference/`:
+    - seven guides (research, design kit, content model, brand from a logo, questionnaire, sample photos, review and ship);
+    - five scripts (`capture-references.mjs`, `snap.mjs`, `contrast.mjs` and `qa-workflow.js`, which load Playwright from the client's repo or run under the Workflow tool, and `cutout.py`, which needs Pillow and numpy);
+  - append an "After the intake" section to `first-website` that points to it;
+  - bump the plugin and the marketplace to 1.1.0.
+- **Rationale:**
+  - Aaron asked to share the process behind a client site he rated highly ("upload it to the github so i can share it").
+  - The skill is written generic: no client, company, mailbox, team id or local path. Aaron's own values for it live in his memory, not here.
+  - Its optional tools (21st.dev and nano-banana-pro) are already offered by this kit. Nothing new is installed, so no install command changed.
+- **Checks:** the KIT-010 searches, the sha256 copies (KIT-011), and an independent privacy and correctness review before publishing.
+- **Source:** Aaron, 2026-09-30.
+
