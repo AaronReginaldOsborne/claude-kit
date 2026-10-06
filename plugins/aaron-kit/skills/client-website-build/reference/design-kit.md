@@ -44,8 +44,8 @@ Stack used: Next.js 16 App Router, Tailwind CSS v4 (tokens in `globals.css` unde
      - up to three short trust chips.
    - Right: the subject standing in a flat pastel card, with its top breaking out above the card's edge. Around it:
      - a spinning circular badge (the business name and city around the brand mark);
-     - two small floating info chips;
-     - a "Sample" tag while photos are samples.
+     - two small floating info chips.
+   - No "Sample" tag on the photo: the alt text and the review email say it is a sample (`sample-photos.md`).
    - Live, before their photos arrive, the card holds the logo.
    - Entrances are CSS (`tw-animate-css`: `animate-in fade-in slide-in-from-bottom-4 fill-mode-both`, staggered delays), so they need no client JS.
 3. **A tilted marquee band** of the services in the dark brand colour, separated by motif icons:

@@ -1,7 +1,15 @@
 """Cut a subject (a pet, a product) out of a photo shot on a plain background.
 
 Usage:
-    python cutout.py input.png output.png [--thresh 26] [--floor auto|warm|grey|none] [--max 900]
+    python cutout.py input.png output.png [--matte flood|green] [--thresh 26] [--floor auto|warm|grey|none] [--max 900]
+
+--matte green is for a subject shot on chroma-key green (#00FF00), the way to shoot white or near-white subjects. The
+background is everything joined to the border through screen-like pixels, shadows on the screen included, so the lit
+floor and its shadows drop out, and a hole that shows lit screen is cleared too. The outline is unmixed from the
+screen and green spill is removed everywhere, which also shifts creams and yellows toward peach and orange: nothing
+green, yellow or gold on a green screen. Deep shadow on the subject itself (under the chest, between the legs) stays
+dark, so check under the subject at 2x and regenerate or retouch if it shows. Then step 2 and the resize below apply.
+The default, --matte flood, is for a white or mid-grey backdrop, tuned with --thresh and --floor:
 
 Steps:
 1. Flood-fill the background from seeds all along the border (PIL ImageDraw.floodfill; no scipy needed), so light
@@ -13,7 +21,8 @@ Steps:
    --floor auto : neutral light pixels only (white background; safe for white or cream subjects)
    --floor warm : any light low-saturation pixel (white background; stronger, for saturated subjects such as an
                   apricot poodle or a golden retriever)
-   --floor grey : neutral pixels darker than a light subject (mid-grey background, the way to shoot white subjects)
+   --floor grey : neutral pixels darker than a light subject (mid-grey background; for light subjects, shooting on
+                  green and using --matte green leaves no grey halo)
    --floor none : skip
 5. Keep the largest island again, crop, then shrink the longest side to at most --max (default 900; never enlarged).
 Always look at the result on the real card colour before using it.
@@ -44,6 +53,67 @@ def remove_background(im: Image.Image, thresh: int) -> Image.Image:
     out.putalpha(alpha)
     box = alpha.point(lambda v: 255 if v > 10 else 0).getbbox()
     return out.crop(box)
+
+
+def _grow(mask: np.ndarray, px: int) -> np.ndarray:
+    """The mask grown by px pixels (px >= 1)."""
+    return np.asarray(Image.fromarray((mask * 255).astype(np.uint8), "L").filter(ImageFilter.MaxFilter(2 * px + 1))) > 127
+
+
+def green_matte(im: Image.Image, band: int = 2, rim: int = 2) -> Image.Image:
+    """For a subject shot on a chroma-key green backdrop (the way to shoot white or near-white subjects).
+    1. The screen's colour is the median of the green pixels along the border.
+    2. Background is everything joined to the border, or to an enclosed patch of lit screen (a hole, a gap between
+       legs), through screen-like pixels: green in proportion to their own brightness, as the screen is, so a shadow
+       on the screen (a darker green) is background too. Near-black pixels count only when green leads them, so a
+       black nose or eye at the outline stays.
+    3. Everything else is the subject and stays opaque, including fur tinted green by bounce light under a chin.
+    4. The outline: background within `band` px of the subject, and the subject's own `rim` px, get a soft alpha from
+       the subject's coverage, with a dead zone so the glow a light subject throws on the screen stays clear, and
+       their colour is unmixed from the screen. Background farther out is fully clear.
+    5. Despill: green is capped at the average of red and blue, which takes green bounce light off white and tan fur.
+       It also shifts creams and yellows toward peach or orange (cream 245,235,200 becomes 245,222,200), and anything
+       green on the subject turns grey or vanishes."""
+    rgb = np.asarray(im.convert("RGB")).astype(np.float32)
+    h, w = rgb.shape[:2]
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    excess = g - np.maximum(r, b)  # high on the screen, zero or below on fur and skin
+    border = np.concatenate([rgb[0], rgb[-1], rgb[:, 0], rgb[:, -1]])
+    border_excess = border[:, 1] - np.maximum(border[:, 0], border[:, 2])
+    screen = np.median(border[border_excess > 18], axis=0) if (border_excess > 18).any() else np.array([0.0, 255.0, 0.0])
+    s_ex = max(float(screen[1] - max(screen[0], screen[2])), 1.0)
+    s_ratio = s_ex / max(float(screen[1]), 1.0)
+    ratio = excess / np.maximum(g, 1.0)  # brightness-free: a shadow on the screen keeps the screen's ratio
+    green_led_dark = (np.maximum(np.maximum(r, g), b) < 30) & (g >= np.maximum(r, b) + 4)
+    screenlike = ((ratio >= 0.5 * s_ratio) & (g >= 12)) | green_led_dark
+    # .copy(): an image made by fromarray can share the array's read-only memory, and floodfill would then write nowhere.
+    mask = Image.fromarray((screenlike * 255).astype(np.uint8), "L").copy()
+    for seed in [(x, 0) for x in range(w)] + [(x, h - 1) for x in range(w)] + [(0, y) for y in range(h)] + [(w - 1, y) for y in range(h)]:
+        if mask.getpixel(seed) == 255:
+            ImageDraw.floodfill(mask, seed, 128)
+    for y, x in np.argwhere((np.asarray(mask) == 255) & (excess >= 0.8 * s_ex)):  # enclosed lit screen
+        if mask.getpixel((int(x), int(y))) == 255:
+            ImageDraw.floodfill(mask, (int(x), int(y)), 128)
+    background = np.asarray(mask) == 128
+    subject = ~background
+    coverage = 1 - np.clip(excess / s_ex, 0, 1)  # exact for a mix of a neutral subject and the lit screen
+    coverage_r = 1 - np.clip(ratio / s_ratio, 0, 1)  # shadow-proof
+    ramp = 1 - np.clip((excess - 0.15 * s_ex) / (0.6 * s_ex), 0, 1)
+    ramp_r = np.clip((coverage_r - 0.25) / 0.6, 0, 1)
+    edge = background & _grow(subject, band)
+    outline = subject & _grow(background, rim)
+    alpha = np.where(subject, 1.0, 0.0)
+    alpha = np.where(edge, np.minimum(ramp, ramp_r), alpha)
+    alpha = np.where(outline, np.where(green_led_dark, 0.0, np.minimum(np.maximum(ramp, 0.5), coverage_r)), alpha)
+    alpha = np.where(alpha < 0.04, 0.0, np.where(alpha > 0.96, 1.0, alpha))
+    # Unmix the screen from the outline: subject = (pixel - (1 - coverage) * screen) / coverage.
+    c = np.clip(coverage, 0.05, 1)[..., None]
+    unmix = (((alpha > 0) & (alpha < 1)) | outline)[..., None]
+    rgb = np.where(unmix, (rgb - (1 - c) * screen) / c, rgb).clip(0, 255)
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    g = np.minimum(g, (r + b) / 2)
+    out = Image.fromarray(np.dstack([r, g, b, alpha * 255]).clip(0, 255).astype(np.uint8), "RGBA")
+    return out.crop(out.getchannel("A").point(lambda v: 255 if v > 10 else 0).getbbox())
 
 
 def keep_subject(im: Image.Image, scale: int = 4) -> Image.Image:
@@ -143,11 +213,15 @@ def main() -> None:
     ap.add_argument("output")
     ap.add_argument("--thresh", type=int, default=26, help="flood-fill colour tolerance (raise for off-white backgrounds)")
     ap.add_argument("--floor", choices=["auto", "warm", "grey", "none"], default="auto")
+    ap.add_argument("--matte", choices=["flood", "green"], default="flood", help="flood: white or mid-grey backdrop (default; tune with --thresh and --floor); green: chroma-key green backdrop, the way to shoot white or near-white subjects (--thresh and --floor are not used)")
     ap.add_argument("--max", type=int, default=900, help="longest side of the output, in pixels")
     args = ap.parse_args()
-    cut = keep_subject(remove_background(Image.open(args.input), args.thresh))
-    cut, removed = clean_floor(cut, args.floor)
-    cut = keep_subject(cut)
+    if args.matte == "green":
+        cut, removed = keep_subject(green_matte(Image.open(args.input))), 0
+    else:
+        cut = keep_subject(remove_background(Image.open(args.input), args.thresh))
+        cut, removed = clean_floor(cut, args.floor)
+        cut = keep_subject(cut)
     cut.thumbnail((args.max, args.max))
     cut.save(args.output, optimize=True)
     print(f"{args.output} {cut.size} floor pixels removed: {removed}")

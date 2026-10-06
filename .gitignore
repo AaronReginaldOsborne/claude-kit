@@ -21,3 +21,6 @@ node_modules/
 # OS clutter
 .DS_Store
 Thumbs.db
+
+# Python bytecode (importing client-website-build's cutout.py writes it next to the script)
+__pycache__/

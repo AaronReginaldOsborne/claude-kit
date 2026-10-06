@@ -54,7 +54,7 @@ IDs are stable; never renumber. Status: BUILT (written and verified per command,
 - AC4: no file of a `notIncluded` item exists in the repo.
 
 ## KIT-011 Verbatim copies (DONE)
-- AC1: `files/CLAUDE.md`, `files/commands/antivibe-docs.md` and every file under `plugins/aaron-kit/skills/` (four skills; `client-website-build` has a `reference/` folder) have the same sha256 as their originals in Aaron's user Claude folder at the time of copying.
+- AC1: `files/commands/antivibe-docs.md` and every file under `plugins/aaron-kit/skills/` (four skills; `client-website-build` has a `reference/` folder) have the same sha256 as their originals in Aaron's user Claude folder at the time of copying. `files/CLAUDE.md` has the same sha256 as the original with its "Design from real product UIs" section cut (from the blank lines before that heading to the next level-2 heading or the end of the file), ending in one newline: that section names a company item (Aaron, 2026-10-06). Check: `node -e "const f=require('fs'),h=s=>require('crypto').createHash('sha256').update(s).digest('hex');const o=f.readFileSync(process.argv[1],'utf8').replace(/\n+## Design from real product UIs[^\n]*\n[\s\S]*?(?=\n## |$)/,'').replace(/\n*$/,'\n');console.log(h(o)===h(f.readFileSync('files/CLAUDE.md','utf8'))?'match':'differs')" ~/.claude/CLAUDE.md`
 - AC2: `claude plugin validate .` and `claude plugin validate ./plugins/aaron-kit --strict` pass.
 
 ## KIT-012 Repo access (BUILT: the repo is public, Aaron's decision 2026-09-27; created and pushed 2026-09-27)

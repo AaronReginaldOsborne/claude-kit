@@ -188,3 +188,49 @@ ADR style: decision, rationale, source. Newest decisions are appended at the end
 - **Checks:** the KIT-010 searches, the sha256 copies (KIT-011), and an independent privacy and correctness review before publishing.
 - **Source:** Aaron, 2026-09-30.
 
+## 2026-09-30 client-website-build: favicons and green-screen cut-outs (plugin 1.1.1)
+- **Decision:**
+  - a sixth script, `make-icons.mjs`, makes the favicons from the logo's mark (`icon.svg`, `favicon.ico`, `apple-icon.png`) in the Next.js app directory, plus a contact sheet to check them at 16 px:
+    - Chromium parses and measures the SVG;
+    - shapes that paint nothing (hidden layers, no fill and no stroke, off the artboard) are ignored;
+    - strokes and clip paths count when choosing shapes, and the square is fitted to the pixels the mark actually paints;
+    - a first run without `--keep` suggests a cut on each side of the logo's widest empty bands;
+  - the skill makes the icons in step 2 and checks the tab before the client sees the site (`brand-from-logo.md`, `review-and-ship.md`, a lesson in `SKILL.md`);
+  - light subjects for sample photos are shot on chroma-key green, not mid-grey, and keyed with `cutout.py --matte green` (new since 1.1.0):
+    - shadows on the screen and enclosed holes drop out;
+    - the outline is unmixed, with a dead zone so a light subject's own glow on the screen stays clear;
+    - every cut-out is checked at 2x;
+  - sample photos carry no visible "Sample" tag; their alt text and the review email name them as samples;
+  - setup notes:
+    - ESLint ignores `design-research/`;
+    - servers start with `node node_modules/next/dist/bin/next`, not npx, so stopping one frees its port on Windows;
+    - a background task's time limit;
+    - restarting a dev server whose sample route fails with a 500;
+  - bump the plugin and the marketplace to 1.1.1.
+- **Rationale:** lessons from the same build:
+  - its first preview went out with the framework's default favicon, which Aaron caught;
+  - mid-grey left a grey halo and a shadow patch on white fur;
+  - Aaron removed the "Sample" tags as clutter;
+  - QA runs saved downloaded bundles that lint then reported;
+  - a stopped `npx next start` kept its port on Windows, so a check ran against an old build.
+- **Checks:**
+  - **An independent review before publishing.** It covered privacy, the scripts, the docs and the kit's rules, with each finding re-tested by a skeptic.
+    - Privacy came back clean.
+    - It confirmed 23 findings, all fixed in this change. Among them: icons cut off by strokes and clip paths, hidden layers counted, root styles dropped, clones lost, and the keyer leaving shadows and holes as dark patches.
+  - **`make-icons.mjs` against the reviewers' 45 test logos:** all pass.
+    - They cover hidden layers, strokes, filters, markers, clip paths, root styles, `use` and `symbol`, nested SVG, missing viewBoxes, byte-order marks, tiny units, a mark on the right and a malformed file.
+    - On that build's logo, the output matches the build's own icons to within a fraction of a pixel.
+  - **`cutout.py --matte green` against 21 synthetic images and that build's two real samples:** no fringe and no dark rim, and shadows and holes are cleared. The one dark patch left is the subject's own shaded fur.
+  - The KIT-010 searches and the sha256 copies (KIT-011).
+- **Source:** Aaron, 2026-09-30 (the build's preview was missing its favicon; "please get rid of the sample tags"), and the independent review, 2026-10-01.
+
+
+## 2026-10-06 client-website-build: the client approves the plan before anything is built (plugin 1.2.0)
+- **Decision:**
+  - a new step 2: six plain-language docs (`PRD.md`, `ARCHITECTURE.md`, `USER_FLOWS.md`, `DESIGN.md`, `DATA_MODEL.md`, `BUILD_PLAN.md`) go to the client as one plan, each needs the client's dated yes in `DECISIONS.md`, and pages wait for all six;
+  - the later steps move down by one (the design system and its icons are now step 3), with a stop-and-ask before the plan goes to the client;
+  - `/antivibe-docs` lists `DESIGN.md` for anything with a UI and reports which of the six lack the client's yes on websites and portals.
+  - `files/CLAUDE.md` is refreshed without its original's "Design from real product UIs" section (added there on 2026-09-28; it names a company item), so that one copy is no longer byte for byte: KIT-011 AC1 now compares it with the section cut.
+  - The release is plugin 1.2.0 and also carries the 2026-09-30 favicon and cut-out changes; 1.1.1 was never published.
+- **Why:** a baseline run of the skill went from the direction pick straight to building, with only `DECISIONS.md` in `docs/`. With the new step, two runs of the same scenario drafted the six and stopped before anything reached the client.
+- **Source:** Aaron, 2026-10-06 ("we also want to do this for every future website", after reading a six-document pre-build checklist; "leave it out" for the section; "make it 1.2.0").

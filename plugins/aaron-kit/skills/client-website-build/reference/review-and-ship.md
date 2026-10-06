@@ -1,9 +1,15 @@
 # Review loop, preview deploy, QA and the client email
 
 ## Review loop (after every visible change)
-- **Start a local server with the preview flags:**
-  - bash: `PREVIEW_FIXTURES=1 NEXT_PUBLIC_PREVIEW=1 npx next dev -p 3310`
-  - PowerShell: `$env:PREVIEW_FIXTURES="1"; $env:NEXT_PUBLIC_PREVIEW="1"; npx next dev -p 3310`
+- **Start a local server with the preview flags,** with `node` rather than `npx`:
+  - bash: `PREVIEW_FIXTURES=1 NEXT_PUBLIC_PREVIEW=1 node node_modules/next/dist/bin/next dev -p 3310`
+  - PowerShell: `$env:PREVIEW_FIXTURES="1"; $env:NEXT_PUBLIC_PREVIEW="1"; node node_modules/next/dist/bin/next dev -p 3310`
+  - Why not npx: on Windows, npx starts the server through cmd.exe, and stopping npx can leave the server's node process holding the port. The next server then fails to start, while your scripts quietly test the old build. The same goes for `next start`.
+  - Before each start, check the port is free. Either command prints nothing when it is:
+    - PowerShell: `Get-NetTCPConnection -State Listen -LocalPort <port> -ErrorAction SilentlyContinue`;
+    - cmd: `netstat -ano | findstr LISTENING | findstr /C:":<port> "`.
+  - A server started as a background task stops at the task's time limit (30 minutes by default in Claude Code). Give it the longest timeout, and restart it when the preview stops answering.
+  - If the sample photos start failing with a 500 ("Jest worker encountered 2 child process exceptions"), restart the dev server.
 - **Run the screenshot script:**
   - `node <skill>/reference/snap.mjs --base http://localhost:3310 --pages "home,services,book"`
   - It writes the first screen and the full page of each page at 1440x900 and 390x844 (touch). It reports sideways overflow and console errors, and carries on past a failing page. Output goes to `design-research/snaps/`, which is git-ignored.
@@ -18,7 +24,8 @@
   - typecheck, lint, unit tests and `next build` pass;
   - the Playwright walkthrough passes;
   - axe shows no serious or critical violations;
-  - pages have titles and descriptions.
+  - pages have titles and descriptions;
+  - the browser tab shows the client's icon, not the framework's default.
 - **Before launch:** JSON-LD for the business type (name, area and phone matching the client's Google Business Profile), a sitemap, robots, an Open Graph image and a privacy page.
 
 ## Preview deploy (on the user's word)
