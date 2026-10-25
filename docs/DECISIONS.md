@@ -234,3 +234,11 @@ ADR style: decision, rationale, source. Newest decisions are appended at the end
   - The release is plugin 1.2.0 and also carries the 2026-09-30 favicon and cut-out changes; 1.1.1 was never published.
 - **Why:** a baseline run of the skill went from the direction pick straight to building, with only `DECISIONS.md` in `docs/`. With the new step, two runs of the same scenario drafted the six and stopped before anything reached the client.
 - **Source:** Aaron, 2026-10-06 ("we also want to do this for every future website", after reading a six-document pre-build checklist; "leave it out" for the section; "make it 1.2.0").
+
+## 2026-10-25 Windows launcher: @modelcontextprotocol/sdk pinned to 1.32.0
+- **Decision:** the launcher in `files/mcp/nano-banana-pro/` pins `@modelcontextprotocol/sdk` at 1.32.0 (was 1.30.0). `npm audit fix` was run with no `--force`. `@rafarafarafa/nano-banana-pro-mcp` stays at 1.0.4. The install command is still `npm ci --prefix`.
+- **Left unfixed:** `@rafarafarafa/nano-banana-pro-mcp` 1.0.4 depends on `zod` `^3.25.0`, locked at 3.25.76. GHSA-mrhx-c7xc-m3w5 (zod before 4.6.6) has no release inside that range. `npm audit` reports no fix. The dependency was not overridden and the package was not replaced.
+- **Why:** 1.30.0 is inside the published SDK advisories GHSA-6qxp-vccf-f47h, GHSA-22jm-h49p-29qw, GHSA-6prh-2h8m-c8cw, GHSA-46jr-4wx8-v453 and GHSA-rvq5-wwqv-78pq. Each range ends below 1.32.0. The owner asked for 1.32.0. Before the bump, `npm audit` offered 1.32.2 as the newest release that includes those fixes; after pinning 1.32.0 and running `npm audit fix`, the audit no longer reports the SDK.
+- **Also moved in the lockfile, inside existing ranges:** body-parser 2.3.0 to 2.4.0, fast-uri 3.1.8 to 3.1.9, hono 4.13.9 to 4.13.14, ip-address 10.7.2 to 10.7.5, qs 6.16.0 to 6.16.1, and the SDK's own zod 4.6.5 to 4.6.7. Those were the packages `npm install` of SDK 1.32.0 and `npm audit fix` updated. express stayed at 5.2.1.
+- **Checks:** Linux, Node 22.23.4, npm 10.9.9. `npm ci` in `files/mcp/nano-banana-pro`. A dummy-key MCP initialize and tools/list through `launcher.mjs` (no image call). `node --test tools/kit-files.test.mjs`. The Windows handshake was not re-run for this pin.
+- **Source:** owner-approved security patch, 2026-10-25.

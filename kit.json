@@ -615,8 +615,8 @@
         "all": "claude mcp remove nano-banana-pro --scope user",
         "windowsAlso": "then, on the human's yes, delete <USER_CLAUDE_DIR>/mcp/nano-banana-pro/"
       },
-      "note": "On Windows the package's own entry never starts (Unix-only path check), so plain npx gives 'Connection closed'; the kit ships a small launcher for Windows with exact versions and a lockfile (@rafarafarafa/nano-banana-pro-mcp 1.0.4, the only published version; @modelcontextprotocol/sdk 1.30.0, the version verified with the launcher).",
-      "verified": "Linux (WSL): the npx package answered an MCP initialize with a dummy key. Windows: the npx form failed the health check ('Connection closed'); the kit's launcher after 'npm ci --prefix' into a sandbox folder answered initialize with a dummy key, and the added server was Connected (bash selfRun line and the PowerShell line)."
+      "note": "On Windows the package's own entry never starts (Unix-only path check), so plain npx gives 'Connection closed'; the kit ships a small launcher for Windows with exact versions and a lockfile (@rafarafarafa/nano-banana-pro-mcp 1.0.4, the only published version; @modelcontextprotocol/sdk 1.32.0). @rafarafarafa/nano-banana-pro-mcp 1.0.4 depends on zod 3.25.76 (GHSA-mrhx-c7xc-m3w5, zod before 4.6.6); npm audit reports no fix inside its zod ^3.25.0 range, so that dependency is left as published.",
+      "verified": "Linux (WSL): the npx package answered an MCP initialize with a dummy key. Windows: the npx form failed the health check ('Connection closed'); the kit's launcher after 'npm ci --prefix' into a sandbox folder answered initialize with a dummy key, and the added server was Connected (bash selfRun line and the PowerShell line). 2026-10-25, Linux (Node 22.23.4, npm 10.9.9): npm ci of this lockfile with @modelcontextprotocol/sdk 1.32.0, then launcher.mjs answered an MCP initialize and tools/list with a dummy key (no image call). The Windows handshake was not re-run for this pin."
     }
   ],
   "mcpNotes": [
